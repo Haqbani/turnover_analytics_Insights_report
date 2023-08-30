@@ -1,0 +1,420 @@
+---
+title: "Turnover Analytics Insights Report"
+author: "Mohammed Alhaqbani"
+date: "30/9/2023"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+## _Disclaimer_
+
+<span style="color:red;">**Note:**</span> This information and salary data are not real and have been randomly generated for practice purposes.
+
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FALSE)
+library(knitr)
+library(ggplot2)
+library(gt)
+library(tidyverse)
+library(dplyr)
+```
+
+<span style="color: black; font-size: 24px; 
+
+font-weight: bold;">Understanding Employee Turnover</span>
+
+
+**Employee Turnover** refers to the phenomenon of an employee ending their formal relationship with an organization. In essence, it signifies the gradual loss or exit of employees over time. The terms - _employee churn_, _employee turnover_, and _employee attrition_ - are often used interchangeably in the corporate domain.
+
+---
+
+<span style="color: black; font-size: 24px; font-weight: bold;">Why Employee Turnover Matters?</span>
+
+Employees, being the cornerstone of an organization, accentuate its value. A predominant challenge that organizations grapple with today is employee retention. Alarmingly, a vast segment, almost a quarter of all U.S. workers, opts to resign annually. In specific sectors, this rate takes a dramatic leap. Citing the **Society of Human Resource Management (SHRM)**, the financial implications of replacing an employee can range from 50-60% of the employee’s salary, with overarching costs surging to 90-200%.
+
+---
+
+<span style="color: black; font-size: 24px; font-weight: bold;">Types of Employee Turnover</span>
+
+Employee turnover can be dichotomized into:
+- **Voluntary Turnover**: This transpires when an employee, on their volition, chooses to resign.
+- **Involuntary Turnover**: This is an organizational call, where the entity decides to release an employee. This could stem from contractual obligations, organizational restructuring, or disciplinary measures.
+
+---
+
+<span style="color: black; font-size: 24px; font-weight: bold;">Hidden Reasons for Employee Turnover</span>
+
+Underlying reasons for exits often remain shrouded in mystery as employees generally refrain from disclosing them. This course promises revelations, unearthing hidden reasons that might propel turnover. Factors like relationships with superiors, recent salary revisions, extended working hours, commute duration, career satisfaction, and tenure could be pivotal.
+
+
+<hr style="height:2px;border-width:0;color:black;background-color:black">
+## <span style="color:blue">Data exploration</span>
+
+```{r echo=FALSE}
+org_data <- read.csv("Org.csv")
+knitr::kable(head(org_data, 10), caption = "First 10 records of org_data")
+```
+
+
+```{r echo=FALSE}
+ggplot(org_data, aes(x = status)) + 
+  geom_bar(fill = "blue") + 
+  labs(title = "Count of Employees by Status", 
+       x = "Status", 
+       y = "Number of Employees") +
+  theme_minimal()
+
+```
+
+```{r echo=FALSE}
+ggplot(org_data, aes(x = location)) + 
+  geom_bar(fill = "blue") + 
+  labs(title = "Distribution of Employees Across Locations", 
+       x = "Location", 
+       y = "Number of Employees") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r echo=FALSE}
+ggplot(org_data, aes(x = level)) + 
+  geom_bar(fill = "blue") + 
+  labs(title = "Distribution of Employees Across Levels", 
+       x = "Level", 
+       y = "Number of Employees") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+```{r include=FALSE}
+library(kableExtra)
+```
+
+
+## <span style="font-size: 19px; color: black;">What proportion of employees have left?</span>
+
+
+
+```{r include=FALSE}
+total_employees <- nrow(org_data)
+inactive_employees <- sum(org_data$status == "Inactive")
+
+proportion_left <- inactive_employees / total_employees * 100
+
+proportion_left
+
+```
+
+```{r echo=FALSE}
+# Group by 'level' and then calculate the turnover rate for each level
+turnover_rate_by_level <- org_data %>% 
+  group_by(level) %>% 
+  summarise(total_employees = n(),
+            inactive_employees = sum(status == "Inactive")) %>% 
+  mutate(turnover_rate = (inactive_employees / total_employees) * 100)
+```
+
+
+
+```{r echo=FALSE}
+# Sort levels by turnover rate in descending order
+turnover_rate_by_level <- turnover_rate_by_level %>% 
+  arrange(desc(turnover_rate))
+
+turnover_rate_by_level
+```
+
+
+
+```{r echo=FALSE}
+# Use ggplot2 to create a bar plot
+library(ggplot2)
+
+ggplot(turnover_rate_by_level, aes(x=reorder(level, -turnover_rate), y=turnover_rate)) +
+  geom_bar(stat="identity", fill="blue") +
+  coord_flip() +
+  labs(title="Turnover Rate by Level",
+       x="Employee Level",
+       y="Turnover Rate (%)") +
+  theme_minimal()
+
+```
+
+
+```{r turnoverTable, echo=FALSE, results='asis'}
+turnover_by_location <- org_data %>%
+  group_by(location) %>%
+  summarize(total_employees = n(),
+            employees_left = sum(turnover),
+            turnover_rate = (employees_left / total_employees) * 100)
+
+kable(turnover_by_location, 
+      caption = "Turnover by Location", 
+      format = "html", 
+      table.attr = "class='table table-striped'")
+```
+
+
+```{r echo=FALSE}
+# Bar chart for turnover rate by location
+ggplot(turnover_by_location, aes(x=reorder(location, -turnover_rate), y=turnover_rate)) +
+  geom_bar(stat="identity", fill="blue") +
+  coord_flip() +
+  labs(title="Turnover Rate by Location",
+       x="Location",
+       y="Turnover Rate (%)") +
+  theme_minimal()
+
+```
+
+```{r employeeCountTable, echo=FALSE, results='asis'}
+filtered_data <- org_data %>% 
+  filter(level %in% c("Analyst", "Specialist"))
+
+employee_counts <- filtered_data %>%
+  count(level)
+
+kable(employee_counts, 
+      caption = "Employee Counts by Level for Analyst and Specialist", 
+      format = "html", 
+      table.attr = "class='table table-striped'")
+```
+
+
+```{r echo=FALSE}
+
+rating <- read.csv("rating.csv")
+
+
+# Join org_data with rating
+org3 <- left_join(filtered_data, rating, by = "emp_id")
+
+# Display the first few rows of the combined data
+head(org3)
+
+```
+
+
+```{r ratingTurnoverTable, echo=FALSE, results='asis'}
+rating_turnover <- org3 %>%
+  group_by(rating) %>%
+  summarise(turnover_count = sum(turnover == 1, na.rm = TRUE),
+            total_count = n()) %>%
+  mutate(turnover_rate = turnover_count / total_count)
+
+kable(rating_turnover, 
+      caption = "Turnover Rate by Rating", 
+      format = "html", 
+      table.attr = "class='table table-striped'")
+
+```
+
+```{r summaryDataTable, echo=FALSE, results='asis'}
+survey_data <- read.csv("survey.csv")
+combined_data <- left_join(org3, survey_data, by = "mgr_id")
+
+summary_data <- combined_data %>%
+  group_by(status) %>%
+  summarise(mean_effectiveness_score = mean(mgr_effectiveness, na.rm = TRUE))
+
+kable(summary_data, 
+      caption = "Mean Effectiveness Score by Status", 
+      format = "html", 
+      table.attr = "class='table table-striped'")
+```
+
+```{r echo=FALSE}
+ggplot(combined_data, aes(x = status, y = mgr_effectiveness, fill = status)) +
+  geom_boxplot() +
+  labs(title = "Manager Effectiveness Scores by Employee Status",
+       x = "Employee Status",
+       y = "Manager Effectiveness Score") +
+  scale_fill_manual(values = c("Active" = "blue", "Inactive" = "red")) +
+  theme_minimal()
+```
+
+```{r echo=FALSE}
+org_final <- read_csv("org_final.csv")
+
+# Generate the boxplot
+ggplot(org_final, aes(x = status, y = distance_from_home, fill = status)) +
+  geom_boxplot() +
+  labs(title = "Comparison of Travel Distance by Employee Status",
+       x = "Employee Status",
+       y = "Distance from Home") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Active" = "blue", "Inactive" = "red"))
+
+```
+
+```{r echo=FALSE}
+emp_age_diff <- org_final %>%
+  select(emp_id, status, emp_age, mgr_age) %>%
+  mutate(emp_age_diff = mgr_age - emp_age)
+
+```
+
+
+
+```{r echo=FALSE}
+ggplot(emp_age_diff, aes(x=status, y=emp_age_diff, fill=status)) +
+  geom_boxplot() +
+  labs(title="Distribution of Age Difference Between Employee and Manager",
+       x="Employee Status",
+       y="Age Difference") +
+  scale_fill_manual(values = c("Active" = "blue", "Inactive" = "red")) +
+  theme_minimal()
+```
+
+
+
+```{r include=FALSE}
+emp_jhi <- org_final %>%
+  mutate(job_hop_index = total_experience / no_previous_companies_worked) %>%
+  mutate(job_hop_index = ifelse(is.infinite(job_hop_index) | is.na(job_hop_index), NA, job_hop_index)) %>%
+  select(emp_id, job_hop_index, status, no_previous_companies_worked, total_experience)
+
+```
+
+```{r echo=FALSE}
+# Assuming "status" column indicates if an employee is active or inactive
+
+ggplot(emp_jhi, aes(x=status, y=job_hop_index, fill=status)) +
+  geom_boxplot() +
+  labs(title="Comparison of Job Hopping Index",
+       y="Job Hop Index",
+       x="Employee Status") +
+  theme_minimal() +
+  scale_fill_brewer(palette="Set1", name="Employee Status")
+```
+
+
+```{r include=FALSE}
+org_final1 <- read_csv("org_final.csv")
+
+```
+
+```{r include=FALSE}
+# Convert date columns to Date format
+org_final1$date_of_joining <- as.Date(org_final1$date_of_joining, format="%d/%m/%Y")
+org_final1$last_working_date <- as.Date(org_final1$last_working_date, format="%d/%m/%Y")
+org_final1$cutoff_date <- as.Date(org_final1$cutoff_date, format="%d/%m/%Y")
+
+```
+
+```{r echo=FALSE}
+library(dplyr)
+
+org_final1 <- org_final1 %>%
+  mutate(tenure1 = case_when(
+    status == "Inactive" ~ as.numeric(difftime(last_working_date, date_of_joining, units = "days")) / 365.25,
+    status == "Active" ~ as.numeric(difftime(cutoff_date, date_of_joining, units = "days")) / 365.25,
+    TRUE ~ NA_real_
+  ))
+
+# View the first few rows to verify
+head(org_final1)
+
+```
+
+```{r echo=FALSE}
+library(ggplot2)
+
+ggplot(org_final1, aes(x=status, y=tenure1, fill=status)) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = c("Active" = "blue", "Inactive" = "red")) +
+  ggtitle("Distribution of Tenure by Employee Status") + 
+  ylab("Tenure (years)") + 
+  xlab("Employee Status")
+
+```
+
+
+
+
+```{r echo=FALSE}
+library(ggplot2)
+
+ggplot(org_final1, aes(x = compensation)) +
+  geom_histogram(binwidth = 5000, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of Compensation", 
+       x = "Compensation", 
+       y = "Number of Employees") +
+  theme_minimal()
+
+```
+
+
+```{r include=FALSE}
+filtered_data <- filtered_data %>%
+  left_join(select(org_final, emp_id, compensation), by = "emp_id")
+```
+
+
+
+```{r echo=FALSE}
+ggplot(filtered_data, aes(x = level, y = compensation, fill = status)) +
+  geom_boxplot() +
+  labs(title = "Compensation by Level and Status", 
+       x = "Level", 
+       y = "Compensation") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Active" = "blue", "Inactive" = "red"))
+```
+
+
+```{r include=FALSE}
+
+# 1. Calculate median compensation for each level in filtered_data
+median_compensation <- filtered_data %>%
+  group_by(level) %>%
+  summarise(median_compensation = median(compensation, na.rm = TRUE))
+
+# 2. Join this median compensation back to filtered_data
+filtered_data_with_median <- filtered_data %>%
+  left_join(median_compensation, by = "level")
+
+# 3. Calculate Compa-ratio for each employee
+emp_compa_ratio <- filtered_data_with_median %>%
+  mutate(compa_ratio = compensation / median_compensation)
+
+```
+
+
+
+```{r include=FALSE}
+emp_compa_ratio <- emp_compa_ratio %>%
+  mutate(compa_level = if_else(compa_ratio > 1, "Above", "Below"))
+
+```
+
+```{r echo=FALSE}
+library(ggplot2)
+library(scales)
+
+ggplot(emp_compa_ratio, aes(x = status, fill = compa_level)) +
+  geom_bar(position = "fill") +
+  labs(title = "Distribution of Compa-Level by Status", 
+       x = "Status", 
+       y = "Proportion") +
+  scale_y_continuous(labels = percent_format(scale = 1)) +
+  scale_fill_manual(values = c("blue", "red")) +
+  theme_minimal()
+
+```
+
+```{r}
+rmarkdown::render("test2.Rmd")
+
+```
+
+
